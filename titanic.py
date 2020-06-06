@@ -21,9 +21,8 @@ def parse_data_train_vqc(data,split_ratio=0.2):
 	return train, test
 
 def titanic():
-    """This code is a modified version of the following notebook:
-
-    https://www.kaggle.com/startupsci/titanic-data-science-solutions
+	"""This code is a modified version of the following notebook:
+	https://www.kaggle.com/startupsci/titanic-data-science-solutions
 	"""
 	train_df = pd.read_csv('data/train.csv')
 	test_df = pd.read_csv('data/test.csv')
