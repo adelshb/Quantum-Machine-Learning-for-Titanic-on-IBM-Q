@@ -1,31 +1,40 @@
-# data analysis and wrangling
+# -*- coding: utf-8 -*-
+#
+# Written by Adel Sohbi, https://github.com/adelshb
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+
 import pandas as pd
 import numpy as np
 import random as rnd
 
-def parse_data_train_vqc(data,split_ratio=0.2):
+def parse_data_train_vqc(data, split_ratio=0.2):
 
 	data.sample(frac=1)
 
 	train_df = data.iloc[int(data.shape[0]*split_ratio):,:]
 	test_df = data.iloc[:int(data.shape[0]*split_ratio),:]
 
-	train = {}
-	train["A"] = train_df.loc[train_df['Survived']==0].drop("Survived", axis=1).values
-	train["B"] = train_df.loc[train_df['Survived']==1].drop("Survived", axis=1).values
+	X_train = train_df.drop("Survived", axis=1).values
+	y_train = train_df["Survived"].values
 
-	test = {}
-	test["A"] = test_df.loc[test_df['Survived']==0].drop("Survived", axis=1).values
-	test["B"] = test_df.loc[test_df['Survived']==1].drop("Survived", axis=1).values
+	X_test = test_df.drop("Survived", axis=1).values
+	y_test = test_df["Survived"].values
 
-	return train, test
+	return X_train, y_train, X_test, y_test
 
-def titanic():
-	"""This code is a modified version of the following notebook:
-	https://www.kaggle.com/startupsci/titanic-data-science-solutions
+def titanic(datapath="data/"):
 	"""
-	train_df = pd.read_csv('data/train.csv')
-	test_df = pd.read_csv('data/test.csv')
+	This code is a modified version of the following notebook: https://www.kaggle.com/startupsci/titanic-data-science-solutions
+	"""
+	train_df = pd.read_csv(datapath + 'train.csv')
+	test_df = pd.read_csv(datapath + 'test.csv')
 	combine = [train_df, test_df]
 
 	train_df = train_df.drop(['Ticket', 'Cabin'], axis=1)
@@ -33,7 +42,7 @@ def titanic():
 	combine = [train_df, test_df]
 
 	for dataset in combine:
-	    dataset['Title'] = dataset.Name.str.extract(' ([A-Za-z]+)\.', expand=False)
+	    dataset['Title'] = dataset.Name.str.extract(r' ([A-Za-z]+)\.', expand=False)
 
 	pd.crosstab(train_df['Title'], train_df['Sex'])
 
@@ -65,10 +74,6 @@ def titanic():
 	        for j in range(0, 3):
 	            guess_df = dataset[(dataset['Sex'] == i) & \
 	                                  (dataset['Pclass'] == j+1)]['Age'].dropna()
-
-	            # age_mean = guess_df.mean()
-	            # age_std = guess_df.std()
-	            # age_guess = rnd.uniform(age_mean - age_std, age_mean + age_std)
 
 	            age_guess = guess_df.median()
 
@@ -135,6 +140,5 @@ def titanic():
 	    dataset['Fare'] = dataset['Fare'].astype(int)
 
 	train_df = train_df.drop(['FareBand'], axis=1)
-	#combine = [train_df, test_df]
 
 	return train_df, test_df
