@@ -9,16 +9,17 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-""" Implementation of a VQC for the Titanic dataset
+""" Implementation of a QNN for the Titanic dataset
 
 Training script
 """
 
 from argparse import ArgumentParser
 
-from qiskit import Aer
+from qiskit import Aer, QuantumCircuit
 from qiskit.utils import QuantumInstance
-from qiskit_machine_learning.algorithms.classifiers import VQC
+from qiskit_machine_learning.neural_networks import CircuitQNN
+from qiskit_machine_learning.algorithms.classifiers import NeuralNetworkClassifier
 from qiskit.algorithms.optimizers import COBYLA
 from qiskit.circuit.library import RealAmplitudes, ZZFeatureMap
 
@@ -42,33 +43,39 @@ def main(args):
     data, __ = titanic()
     X_train, y_train, X_test, y_test = parse_data_train_vqc(data, split_ratio=args.split_ratio)
 
-    # Initialize Quantum Backend
-    quantum_instance = QuantumInstance(Aer.get_backend(args.backend), shots = args.shots)
+    quantum_instance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=100)
+    optimizer = COBYLA(maxiter=100)
+    feature_map = ZZFeatureMap(feature_dimension=X_train.shape[1], reps=1)
+    ansatz = RealAmplitudes(num_qubits=feature_map._num_qubits, reps=1)
 
-    # Construct VQC
-    optimizer = _available_optimizers.get(args.optimizer)(maxiter=args.max_iter)
-    feature_map = _available_feature_maps.get(args.feature_map)(feature_dimension=args.feature_dim, reps=args.f_reps)
-    ansatz = _available_ansatz.get(args.ansatz)(num_qubits=feature_map.num_qubits, reps=args.a_reps)
-    # optimizer = COBYLA(maxiter=args.max_iter)
-    # feature_map = ZZFeatureMap(feature_dimension=args.feature_dim, reps=args.f_reps)
-    # ansatz = RealAmplitudes(num_qubits=feature_map.num_qubits, reps=args.a_reps)
+    qc = QuantumCircuit(feature_map._num_qubits)
+    qc.compose(feature_map, inplace=True)
+    qc.compose(ansatz, inplace=True)
 
-    vqc = VQC(feature_map=feature_map, 
-                ansatz=ansatz, 
-                loss='cross_entropy', 
-                optimizer=optimizer, 
-                warm_start=False, 
-                quantum_instance=quantum_instance)
+    qnn = CircuitQNN(circuit= qc, 
+                    input_params=feature_map.parameters, 
+                    weight_params=ansatz.parameters, 
+                    sparse=False, 
+                    sampling=False, 
+                    interpret=parity, 
+                    output_shape=len(np.unique(y_train, axis=0)), 
+                    gradient=None, 
+                    quantum_instance=quantum_instance)
+
+    cc = NeuralNetworkClassifier(neural_network=qnn,
+                                    optimizer=optimizer)
 
     # Train the model
-    vqc.fit(X_train, y_train)
+    cc.fit(X_train, y_train)
 
     # Model accuracy
-    acc_train = vqc.score(X_train, y_train)
-    acc_test = vqc.score(X_test, y_test)
+    acc_train = cc.score(X_train, y_train)
+    acc_test = cc.score(X_test, y_test)
     print("Accuracy on training dataset: {}.".format(acc_train))
     print("Accuracy on testing dataset: {}.".format(acc_test))
 
+def parity(x):
+    return '{:b}'.format(x).count('1') % 2
 
 if __name__ == "__main__":
     parser = ArgumentParser()
